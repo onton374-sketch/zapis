@@ -11,6 +11,21 @@ fallthrough = true
 [vars]
 # Страница живёт на GitHub Pages, поэтому API открыт для любого источника.
 ALLOWED_ORIGIN = "*"
+# Москва. Нужно, чтобы «сегодня» и «завтра» считались по местному времени.
+TZ_OFFSET_HOURS = "3"
+
+# Хранилище заявок: одна точка правды для обоих бэкендов.
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "BookingStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BookingStore"]
+
+# Напоминание о завтрашних записях: 20:00 по Москве.
+[triggers]
+crons = ["0 17 * * *"]
 
 [observability]
 enabled = true

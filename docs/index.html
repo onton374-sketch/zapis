@@ -180,6 +180,14 @@
 
   .time:hover { border-color: #c9c5b8; }
 
+  .time:disabled {
+    color: #b3afa4;
+    background: #f6f5f0;
+    border-color: var(--line);
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+
   .day[aria-pressed="true"],
   .time[aria-pressed="true"] {
     background: var(--accent);
@@ -280,6 +288,7 @@
   }
 
   .status[data-kind="ok"] { color: var(--accent); }
+  .status[data-kind="bad"] { color: var(--danger); }
 
   .done { text-align: center; }
 
@@ -430,14 +439,15 @@
     workEnd: 19 * 60,
     closedWeekdays: [0],
     minLeadMinutes: 120,
-    requestTimeoutMs: 4500
+    requestTimeoutMs: 4500,
+    slotsTimeoutMs: 4000
   };
 
   var MS_DAY = 86400000;
   var WEEKDAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
-  var state = { date: "", time: "", days: [], slots: {} };
+  var state = { date: "", time: "", days: [], slots: {}, busy: {} };
 
   var el = {
     intro: document.getElementById("intro"),
@@ -529,18 +539,27 @@
   function renderTimes() {
     el.times.innerHTML = "";
     var slots = state.slots[state.date] || [];
-    el.timesEmpty.hidden = slots.length > 0;
+    var busy = state.busy[state.date] || {};
+    var free = 0;
 
     slots.forEach(function (slot) {
+      var taken = !!busy[slot];
+      if (!taken) free++;
+
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "time";
       btn.textContent = slot;
       btn.setAttribute("data-time", slot);
       btn.setAttribute("aria-pressed", String(slot === state.time));
+      btn.disabled = taken;
+      if (taken) btn.title = "Это время уже занято";
       btn.addEventListener("click", function () { selectTime(slot); });
       el.times.appendChild(btn);
     });
+
+    el.timesEmpty.hidden = slots.length > 0;
+    if (slots.length && !free) el.timesEmpty.hidden = false;
   }
 
   function renderSummary() {
@@ -554,7 +573,8 @@
 
   function selectDate(iso) {
     state.date = iso;
-    if (!(state.slots[iso] || []).includes(state.time)) state.time = "";
+    var busy = state.busy[iso] || {};
+    if (!(state.slots[iso] || []).includes(state.time) || busy[state.time]) state.time = "";
     renderDays();
     renderTimes();
     renderSummary();
@@ -586,6 +606,11 @@
     renderDays();
     renderTimes();
     renderSummary();
+    loadBusy().then(function () {
+      if (state.busy[state.date] && state.busy[state.date][state.time]) state.time = "";
+      renderTimes();
+      renderSummary();
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
     var first = el.days.querySelector("button");
     if (first) first.focus({ preventScroll: true });
@@ -634,6 +659,8 @@
     el.submit.textContent = "Отправляю...";
 
     sendBooking(payload).then(function () {
+      state.busy[payload.date] = state.busy[payload.date] || {};
+      state.busy[payload.date][payload.time] = true;
       el.doneSlot.textContent = humanDate(payload.date) + ", " + payload.time;
       el.booking.hidden = true;
       el.done.hidden = false;
@@ -643,6 +670,17 @@
       state.time = "";
       window.scrollTo({ top: 0, behavior: "smooth" });
     }).catch(function (err) {
+      if (err && err.code === "taken") {
+        state.busy[payload.date] = state.busy[payload.date] || {};
+        state.busy[payload.date][payload.time] = true;
+        state.time = "";
+        setStatus(err.message, "bad");
+        el.submit.disabled = false;
+        el.submit.textContent = "Записаться";
+        loadBusy().then(function () { renderTimes(); renderSummary(); });
+        return;
+      }
+
       var text = err && err.name === "AbortError"
         ? "Сервер не ответил. Проверьте связь и попробуйте ещё раз."
         : (err && err.message ? err.message : "Не удалось отправить заявку.");
@@ -676,7 +714,7 @@
   }
 
   // Первым делом пробуем тот бэкенд, который сработал в прошлый раз.
-  function queueEndpoints() {
+  function orderedEndpoints() {
     var list = CONFIG.endpoints.slice();
     var last = "";
     try { last = localStorage.getItem("zapis.endpoint") || ""; } catch (e) {}
@@ -685,10 +723,66 @@
       list.splice(index, 1);
       list.unshift(last);
     }
+    return list;
+  }
 
+  function queueEndpoints() {
+    var list = orderedEndpoints();
     var queue = [];
     for (var round = 0; round < CONFIG.attempts; round++) queue = queue.concat(list);
     return queue;
+  }
+
+  // Занятое время спрашиваем тем же перебором адресов, но по одному разу.
+  function apiGet(suffix) {
+    var list = orderedEndpoints();
+    var lastError = null;
+
+    function attempt(index) {
+      if (index >= list.length) return Promise.reject(lastError || new Error("Нет связи."));
+      var url = list[index].replace(/\/api\/book$/, suffix);
+      return getJson(url).then(function (data) {
+        rememberEndpoint(list[index]);
+        return data;
+      }, function (err) {
+        lastError = err;
+        return attempt(index + 1);
+      });
+    }
+
+    return attempt(0);
+  }
+
+  function getJson(url) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, CONFIG.slotsTimeoutMs);
+
+    return fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok || !data.ok) throw new Error(data.error || "Нет связи.");
+          return data;
+        });
+      })
+      .finally(function () { clearTimeout(timer); });
+  }
+
+  function loadBusy() {
+    return apiGet("/api/slots?days=" + (CONFIG.daysAhead + 1)).then(function (data) {
+      var map = {};
+      (data.busy || []).forEach(function (item) {
+        var parts = String(item).split(" ");
+        if (parts.length !== 2) return;
+        if (!map[parts[0]]) map[parts[0]] = {};
+        map[parts[0]][parts[1]] = true;
+      });
+      state.busy = map;
+      return map;
+    }).catch(function () {
+      // Если список занятых не пришёл, форму не ломаем: сервер всё равно
+      // проверит слот при отправке.
+      return state.busy;
+    });
   }
 
   function rememberEndpoint(url) {
@@ -711,6 +805,7 @@
         if (res.ok && data.ok) return data;
         var failure = new Error(data.error || "Не удалось отправить заявку.");
         // 4xx значит «данные не те», повторять бессмысленно. 5xx и обрыв — можно.
+        failure.code = data.code || "";
         failure.fatal = res.status < 500;
         throw failure;
       });
