@@ -1,0 +1,12 @@
+{
+  "name": "zapis",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "deploy": "netlify deploy --prod"
+  },
+  "devDependencies": {
+    "netlify-cli": "^27.20.1"
+  }
+}

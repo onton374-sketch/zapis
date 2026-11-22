@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Онлайн-запись</title>
+<meta name="description" content="Выберите день и время, оставьте заявку. Подтвержу запись в Telegram.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f2f1ec">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'self'; script-src 'nonce-b7f3a91c'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://zapis.zxc-mudriy.workers.dev https://zapis-bee.netlify.app; frame-ancestors 'none'">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f6b4f'/%3E%3Cpath d='M18 33l9 9 19-20' fill='none' stroke='%23fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f2f1ec;
+    --card: #fffdf9;
+    --ink: #14161a;
+    --muted: #6f7278;
+    --line: #e2dfd6;
+    --accent: #1f6b4f;
+    --accent-dark: #18553e;
+    --danger: #a4241f;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 16px 72px;
+  }
+
+  .page {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) + 6px);
+    padding: 28px 24px;
+    box-shadow: 0 1px 2px rgba(20, 22, 26, .04), 0 12px 32px -24px rgba(20, 22, 26, .35);
+  }
+
+  .eyebrow {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(28px, 7vw, 40px);
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    font-weight: 650;
+  }
+
+  .lead {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 44ch;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 54px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    font-size: 17px;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+
+  .cta:hover { background: var(--accent-dark); }
+
+  .facts {
+    list-style: none;
+    margin: 28px 0 0;
+    padding: 24px 0 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .facts li { position: relative; padding-left: 24px; }
+
+  .facts li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: .55em;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    opacity: .55;
+  }
+
+  .block + .block {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+
+  .block h2 {
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .01em;
+  }
+
+  .days {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .day {
+    flex: 0 0 auto;
+    min-width: 76px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+    scroll-snap-align: start;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+
+  .day b { display: block; font-size: 14px; font-weight: 600; }
+
+  .day span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .day:hover { border-color: #c9c5b8; }
+
+  .times {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  .time {
+    padding: 11px 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+
+  .time:hover { border-color: #c9c5b8; }
+
+  .day[aria-pressed="true"],
+  .time[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .day[aria-pressed="true"] span { color: rgba(255, 255, 255, .8); }
+
+  .empty {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .field + .field { margin-top: 14px; }
+
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .opt {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 13px;
+  }
+
+  .field input,
+  .field textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
+    font: inherit;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .field textarea { resize: vertical; min-height: 64px; }
+
+  .field input:focus,
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(31, 107, 79, .15);
+  }
+
+  .field input:user-invalid { border-color: var(--danger); }
+
+  .hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .summary {
+    margin: 24px 0 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(31, 107, 79, .07);
+    font-size: 15px;
+  }
+
+  .summary b { font-weight: 600; }
+
+  .submit {
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    margin-top: 16px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease, opacity .15s ease;
+  }
+
+  .submit:hover { background: var(--accent-dark); }
+
+  .submit:disabled { opacity: .55; cursor: progress; }
+
+  .status {
+    min-height: 22px;
+    margin: 12px 0 0;
+    color: var(--danger);
+    font-size: 14px;
+  }
+
+  .status[data-kind="ok"] { color: var(--accent); }
+
+  .done { text-align: center; }
+
+  .done .mark {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(31, 107, 79, .1);
+    color: var(--accent);
+  }
+
+  .done h2 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.01em; }
+
+  .done p { margin: 0 auto 24px; color: var(--muted); max-width: 38ch; }
+
+  .done .slot {
+    display: inline-block;
+    margin: 0 0 24px;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ghost {
+    display: block;
+    width: 100%;
+    min-height: 50px;
+    padding: 0 24px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .ghost:hover { border-color: #c9c5b8; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  @media (max-width: 420px) {
+    body { padding: 24px 12px 56px; }
+    .card { padding: 22px 18px; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <section class="card" id="intro">
+    <p class="eyebrow">Онлайн-запись</p>
+    <h1>Запишитесь на удобное время</h1>
+    <p class="lead">Выберите день и час, оставьте имя и контакт. Заявка придёт мне в Telegram, я подтвержу время лично.</p>
+    <button class="cta" id="start" type="button">Записаться</button>
+    <ul class="facts">
+      <li>Свободные слоты на две недели вперёд</li>
+      <li>Без регистрации и звонков</li>
+      <li>Подтверждение в Telegram</li>
+    </ul>
+  </section>
+
+  <section class="card" id="booking" hidden>
+    <p class="eyebrow">Онлайн-запись</p>
+    <h1>Выберите время</h1>
+    <p class="lead">Заявка уйдёт мне в Telegram. Время подтвержу в течение дня.</p>
+
+    <form id="form" novalidate>
+      <div class="block">
+        <h2 id="day-label">День</h2>
+        <div class="days" id="days" role="group" aria-labelledby="day-label"></div>
+      </div>
+
+      <div class="block">
+        <h2 id="time-label">Время</h2>
+        <div class="times" id="times" role="group" aria-labelledby="time-label"></div>
+        <p class="empty" id="times-empty" hidden>На этот день свободных слотов нет. Выберите другой.</p>
+      </div>
+
+      <div class="block">
+        <h2 id="who-label">Контакты</h2>
+        <div class="field">
+          <label for="name">Имя</label>
+          <input id="name" name="name" type="text" autocomplete="name" maxlength="80" required placeholder="Как к вам обращаться">
+        </div>
+        <div class="field">
+          <label for="phone">Телефон или Telegram</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="32" required placeholder="+7 900 000-00-00">
+        </div>
+        <div class="field">
+          <label for="comment">Комментарий <span class="opt">необязательно</span></label>
+          <textarea id="comment" name="comment" rows="2" maxlength="300" placeholder="Что нужно сделать"></textarea>
+        </div>
+        <div class="hp" aria-hidden="true">
+          <label for="website">Ваш сайт</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="summary" id="summary" hidden></div>
+
+      <button class="submit" id="submit" type="submit">Записаться</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <section class="card done" id="done" hidden>
+    <div class="mark" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5"/>
+      </svg>
+    </div>
+    <h2>Заявка отправлена</h2>
+    <p>Я получил её в Telegram и свяжусь с вами, чтобы подтвердить время.</p>
+    <div class="slot" id="done-slot"></div>
+    <button class="ghost" id="again" type="button">Записаться ещё раз</button>
+  </section>
+
+</main>
+
+<script nonce="b7f3a91c">
+(function () {
+  "use strict";
+
+  var CONFIG = {
+    // Заявку принимают два независимых бэкенда. Сеть до зарубежных хостингов
+    // нестабильна, поэтому клиент перебирает их по кругу, пока один не ответит.
+    endpoints: [
+      "https://zapis.zxc-mudriy.workers.dev/api/book",
+      "https://zapis-bee.netlify.app/api/book"
+    ],
+    attempts: 2,
+    daysAhead: 14,
+    slotMinutes: 30,
+    workStart: 10 * 60,
+    workEnd: 19 * 60,
+    closedWeekdays: [0],
+    minLeadMinutes: 120,
+    requestTimeoutMs: 6000
+  };
+
+  var MS_DAY = 86400000;
+  var WEEKDAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+  var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+
+  var state = { date: "", time: "", days: [], slots: {} };
+
+  var el = {
+    intro: document.getElementById("intro"),
+    booking: document.getElementById("booking"),
+    done: document.getElementById("done"),
+    start: document.getElementById("start"),
+    again: document.getElementById("again"),
+    form: document.getElementById("form"),
+    days: document.getElementById("days"),
+    times: document.getElementById("times"),
+    timesEmpty: document.getElementById("times-empty"),
+    name: document.getElementById("name"),
+    phone: document.getElementById("phone"),
+    comment: document.getElementById("comment"),
+    website: document.getElementById("website"),
+    summary: document.getElementById("summary"),
+    submit: document.getElementById("submit"),
+    status: document.getElementById("status"),
+    doneSlot: document.getElementById("done-slot")
+  };
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+  function isoDay(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  function timeLabel(minutes) { return pad(Math.floor(minutes / 60)) + ":" + pad(minutes % 60); }
+
+  function dayLabel(d) {
+    return {
+      weekday: WEEKDAYS[d.getDay()],
+      day: String(d.getDate()),
+      month: MONTHS[d.getMonth()].slice(0, 3)
+    };
+  }
+
+  function humanDate(iso) {
+    var parts = iso.split("-");
+    var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+    return WEEKDAYS[d.getDay()] + ", " + d.getDate() + " " + MONTHS[d.getMonth()];
+  }
+
+  function buildDays() {
+    var now = new Date();
+    var today = startOfDay(now);
+    var limit = now.getTime() + CONFIG.minLeadMinutes * 60000;
+    var out = [];
+
+    for (var i = 0; i <= CONFIG.daysAhead; i++) {
+      var day = new Date(today.getTime() + i * MS_DAY);
+      if (CONFIG.closedWeekdays.indexOf(day.getDay()) !== -1) continue;
+
+      var slots = [];
+      for (var m = CONFIG.workStart; m < CONFIG.workEnd; m += CONFIG.slotMinutes) {
+        var at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+        at.setMinutes(m);
+        if (at.getTime() >= limit) slots.push(timeLabel(m));
+      }
+
+      var iso = isoDay(day);
+      state.slots[iso] = slots;
+      if (slots.length) out.push({ iso: iso, date: day });
+    }
+
+    state.days = out;
+  }
+
+  function renderDays() {
+    el.days.innerHTML = "";
+    state.days.forEach(function (item) {
+      var parts = dayLabel(item.date);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "day";
+      btn.setAttribute("data-date", item.iso);
+      btn.setAttribute("aria-pressed", String(item.iso === state.date));
+      var b = document.createElement("b");
+      b.textContent = parts.weekday;
+      var s = document.createElement("span");
+      s.textContent = parts.day + " " + parts.month;
+      btn.appendChild(b);
+      btn.appendChild(s);
+      btn.addEventListener("click", function () { selectDate(item.iso); });
+      el.days.appendChild(btn);
+    });
+  }
+
+  function renderTimes() {
+    el.times.innerHTML = "";
+    var slots = state.slots[state.date] || [];
+    el.timesEmpty.hidden = slots.length > 0;
+
+    slots.forEach(function (slot) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "time";
+      btn.textContent = slot;
+      btn.setAttribute("data-time", slot);
+      btn.setAttribute("aria-pressed", String(slot === state.time));
+      btn.addEventListener("click", function () { selectTime(slot); });
+      el.times.appendChild(btn);
+    });
+  }
+
+  function renderSummary() {
+    if (!state.date || !state.time) {
+      el.summary.hidden = true;
+      return;
+    }
+    el.summary.hidden = false;
+    el.summary.innerHTML = "Вы выбрали: <b>" + humanDate(state.date) + ", " + state.time + "</b>";
+  }
+
+  function selectDate(iso) {
+    state.date = iso;
+    if (!(state.slots[iso] || []).includes(state.time)) state.time = "";
+    renderDays();
+    renderTimes();
+    renderSummary();
+    setStatus("");
+  }
+
+  function selectTime(slot) {
+    state.time = slot;
+    renderTimes();
+    renderSummary();
+    setStatus("");
+  }
+
+  function setStatus(text, kind) {
+    el.status.textContent = text || "";
+    if (kind) el.status.setAttribute("data-kind", kind);
+    else el.status.removeAttribute("data-kind");
+  }
+
+  function openForm() {
+    el.intro.hidden = true;
+    el.done.hidden = true;
+    el.booking.hidden = false;
+    if (!state.days.length) buildDays();
+
+    var today = state.days[0];
+    if (today && !state.date) state.date = today.iso;
+
+    renderDays();
+    renderTimes();
+    renderSummary();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    var first = el.days.querySelector("button");
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function validate() {
+    var name = el.name.value.replace(/\s+/g, " ").trim();
+    if (name.length < 2) {
+      el.name.focus();
+      return "Напишите имя, чтобы я знал, как к вам обращаться.";
+    }
+    var phone = el.phone.value.trim();
+    var digits = phone.replace(/\D/g, "");
+    var isHandle = /^@?[A-Za-z0-9_]{4,32}$/.test(phone);
+    if (digits.length < 5 && !isHandle) {
+      el.phone.focus();
+      return "Оставьте телефон или ник в Telegram для связи.";
+    }
+    if (!state.date || !state.time) {
+      return "Выберите день и время.";
+    }
+    return "";
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    if (el.submit.disabled) return;
+
+    setStatus("");
+    var error = validate();
+    if (error) {
+      setStatus(error);
+      return;
+    }
+
+    var payload = {
+      name: el.name.value.replace(/\s+/g, " ").trim(),
+      phone: el.phone.value.trim(),
+      date: state.date,
+      time: state.time,
+      comment: el.comment.value.replace(/\s+/g, " ").trim().slice(0, 300),
+      website: el.website.value
+    };
+
+    el.submit.disabled = true;
+    el.submit.textContent = "Отправляю...";
+
+    sendBooking(payload).then(function () {
+      el.doneSlot.textContent = humanDate(payload.date) + ", " + payload.time;
+      el.booking.hidden = true;
+      el.done.hidden = false;
+      el.form.reset();
+      el.submit.disabled = false;
+      el.submit.textContent = "Записаться";
+      state.time = "";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }).catch(function (err) {
+      var text = err && err.name === "AbortError"
+        ? "Сервер не ответил. Проверьте связь и попробуйте ещё раз."
+        : (err && err.message ? err.message : "Не удалось отправить заявку.");
+      setStatus(text);
+      el.submit.disabled = false;
+      el.submit.textContent = "Записаться";
+    });
+  }
+
+  // Перебирает бэкенды по кругу. Сеть до зарубежных хостингов рвётся,
+  // поэтому важен не самый быстрый, а хоть один живой.
+  function sendBooking(payload) {
+    var queue = [];
+    for (var round = 0; round < CONFIG.attempts; round++) {
+      for (var i = 0; i < CONFIG.endpoints.length; i++) queue.push(CONFIG.endpoints[i]);
+    }
+
+    var lastError = null;
+
+    function attempt(index) {
+      if (index >= queue.length) {
+        return Promise.reject(lastError || new Error("Не удалось отправить заявку."));
+      }
+      return postBooking(queue[index], payload).catch(function (err) {
+        if (err && err.fatal) throw err;
+        lastError = err;
+        return attempt(index + 1);
+      });
+    }
+
+    return attempt(0);
+  }
+
+  function postBooking(url, payload) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, CONFIG.requestTimeoutMs);
+
+    return fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    }).then(function (res) {
+      return res.text().then(function (raw) {
+        var data = {};
+        try { data = JSON.parse(raw); } catch (e) {}
+        if (res.ok && data.ok) return data;
+        var failure = new Error(data.error || "Не удалось отправить заявку.");
+        // 4xx значит «данные не те», повторять бессмысленно. 5xx и обрыв — можно.
+        failure.fatal = res.status < 500;
+        throw failure;
+      });
+    }).finally(function () {
+      clearTimeout(timer);
+    });
+  }
+
+  if (location.hash === "#booking") openForm();
+
+  el.start.addEventListener("click", openForm);
+  el.form.addEventListener("submit", submit);
+  el.again.addEventListener("click", function () {
+    el.done.hidden = true;
+    openForm();
+  });
+})();
+</script>
+</body>
+</html>

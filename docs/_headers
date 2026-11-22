@@ -1,0 +1,12 @@
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; form-action 'self'; script-src 'nonce-b7f3a91c'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://zapis.zxc-mudriy.workers.dev https://zapis-bee.netlify.app; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Cache-Control: public, max-age=60
+
+/api/book
+  Cache-Control: no-store
+
+/.netlify/functions/book
+  Cache-Control: no-store

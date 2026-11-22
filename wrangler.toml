@@ -1,0 +1,16 @@
+name = "zapis"
+main = "src/worker.js"
+compatibility_date = "2025-11-01"
+
+# Позволяет импортировать docs/index.html как текст
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[vars]
+# Страница живёт на GitHub Pages, поэтому API открыт для любого источника.
+ALLOWED_ORIGIN = "*"
+
+[observability]
+enabled = true

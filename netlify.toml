@@ -1,0 +1,14 @@
+[build]
+  publish = "docs"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/book"
+  to = "/.netlify/functions/book"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
