@@ -430,7 +430,7 @@
     workEnd: 19 * 60,
     closedWeekdays: [0],
     minLeadMinutes: 120,
-    requestTimeoutMs: 6000
+    requestTimeoutMs: 4500
   };
 
   var MS_DAY = 86400000;
@@ -655,18 +655,17 @@
   // Перебирает бэкенды по кругу. Сеть до зарубежных хостингов рвётся,
   // поэтому важен не самый быстрый, а хоть один живой.
   function sendBooking(payload) {
-    var queue = [];
-    for (var round = 0; round < CONFIG.attempts; round++) {
-      for (var i = 0; i < CONFIG.endpoints.length; i++) queue.push(CONFIG.endpoints[i]);
-    }
-
+    var queue = queueEndpoints();
     var lastError = null;
 
     function attempt(index) {
       if (index >= queue.length) {
         return Promise.reject(lastError || new Error("Не удалось отправить заявку."));
       }
-      return postBooking(queue[index], payload).catch(function (err) {
+      return postBooking(queue[index], payload).then(function (data) {
+        rememberEndpoint(queue[index]);
+        return data;
+      }, function (err) {
         if (err && err.fatal) throw err;
         lastError = err;
         return attempt(index + 1);
@@ -674,6 +673,26 @@
     }
 
     return attempt(0);
+  }
+
+  // Первым делом пробуем тот бэкенд, который сработал в прошлый раз.
+  function queueEndpoints() {
+    var list = CONFIG.endpoints.slice();
+    var last = "";
+    try { last = localStorage.getItem("zapis.endpoint") || ""; } catch (e) {}
+    var index = list.indexOf(last);
+    if (index > 0) {
+      list.splice(index, 1);
+      list.unshift(last);
+    }
+
+    var queue = [];
+    for (var round = 0; round < CONFIG.attempts; round++) queue = queue.concat(list);
+    return queue;
+  }
+
+  function rememberEndpoint(url) {
+    try { localStorage.setItem("zapis.endpoint", url); } catch (e) {}
   }
 
   function postBooking(url, payload) {
